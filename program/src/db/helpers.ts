@@ -23,53 +23,11 @@ export function formatDateTime(date: Date): string {
   })
 }
 
+// 旧バージョンとの互換性のため残しますが、新しい実装を使用することを推奨
 export async function compressImage(file: File | Blob): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-      reject(new Error('Canvas context not available'))
-      return
-    }
-
-    img.onload = () => {
-      const aspectRatio = img.width / img.height
-      let targetWidth = 1200
-      let targetHeight = 1200
-
-      if (aspectRatio > 1) {
-        targetHeight = targetWidth / aspectRatio
-      } else {
-        targetWidth = targetHeight * aspectRatio
-      }
-
-      canvas.width = targetWidth
-      canvas.height = targetHeight
-      ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error('Failed to compress image'))
-          }
-        },
-        'image/jpeg',
-        0.8
-      )
-    }
-
-    img.onerror = () => reject(new Error('Failed to load image'))
-
-    if (file instanceof File) {
-      img.src = URL.createObjectURL(file)
-    } else {
-      img.src = URL.createObjectURL(file)
-    }
-  })
+  // 新しい実装に移行
+  const { compressImage: newCompressImage } = await import('../utils/imageProcessing')
+  return newCompressImage(file)
 }
 
 export function createObjectURL(blob: Blob): string {

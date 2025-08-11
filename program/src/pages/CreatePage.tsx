@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFoodRecordActions } from '../db/hooks'
-import { parseTags, compressImage } from '../db/helpers'
-import { XMarkIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { parseTags } from '../db/helpers'
+import { compressImage } from '../utils/imageProcessing'
+import { LocationData } from '../utils/geolocation'
+import { XMarkIcon, CameraIcon } from '@heroicons/react/24/outline'
+import CameraComponent from '../components/Camera'
+import FileUpload from '../components/Camera/FileUpload'
+import { LocationCapture } from '../components/Location'
+import { Button, ImagePreview, ErrorMessage } from '../components/Common'
 
 export default function CreatePage() {
   const navigate = useNavigate()
@@ -11,37 +17,46 @@ export default function CreatePage() {
   const [photo, setPhoto] = useState<Blob | null>(null)
   const [comment, setComment] = useState('')
   const [tags, setTags] = useState('')
-  const [location, setLocation] = useState<{lat: number, lng: number, accuracy: number} | undefined>(undefined)
+  const [location, setLocation] = useState<LocationData | undefined>(undefined)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [showCamera, setShowCamera] = useState(false)
+  const [uploadMethod, setUploadMethod] = useState<'camera' | 'file' | null>(null)
 
-  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      try {
-        const compressedPhoto = await compressImage(file)
-        setPhoto(compressedPhoto)
-        setPhotoPreview(URL.createObjectURL(compressedPhoto))
-      } catch (err) {
-        console.error('写真の圧縮に失敗しました:', err)
-      }
+  const handleFileSelect = async (file: File) => {
+    try {
+      const compressedPhoto = await compressImage(file)
+      setPhoto(compressedPhoto)
+      setPhotoPreview(URL.createObjectURL(compressedPhoto))
+      setUploadMethod(null)
+    } catch (err) {
+      console.error('写真の圧縮に失敗しました:', err)
     }
   }
 
-  const handleLocationCapture = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          })
-        },
-        (error) => {
-          console.error('位置情報の取得に失敗しました:', error)
-        }
-      )
+  const handleCameraCapture = async (blob: Blob) => {
+    try {
+      const compressedPhoto = await compressImage(blob)
+      setPhoto(compressedPhoto)
+      setPhotoPreview(URL.createObjectURL(compressedPhoto))
+      setShowCamera(false)
+      setUploadMethod(null)
+    } catch (err) {
+      console.error('写真の圧縮に失敗しました:', err)
     }
+  }
+
+  const handleClearPhoto = () => {
+    setPhoto(null)
+    setPhotoPreview(null)
+    setUploadMethod(null)
+  }
+
+  const handleLocationCapture = (locationData: LocationData) => {
+    setLocation(locationData)
+  }
+
+  const handleLocationClear = () => {
+    setLocation(undefined)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -71,12 +86,13 @@ export default function CreatePage() {
     <div className="max-w-md mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">新しい記録</h1>
-        <button
+        <Button
           onClick={() => navigate('/')}
-          className="text-gray-500 hover:text-gray-700 flex items-center"
+          variant="ghost"
+          size="sm"
         >
           <XMarkIcon className="h-5 w-5" />
-        </button>
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -84,19 +100,55 @@ export default function CreatePage() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             写真
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            required
-          />
-          {photoPreview && (
-            <img
-              src={photoPreview}
-              alt="プレビュー"
-              className="mt-2 w-full h-64 object-cover rounded-md"
+          
+          {!photo && !uploadMethod && (
+            <div className="space-y-3">
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  onClick={() => setShowCamera(true)}
+                  className="flex-1 flex items-center justify-center"
+                >
+                  <CameraIcon className="h-5 w-5 mr-2" />
+                  カメラで撮影
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setUploadMethod('file')}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  ファイルを選択
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {uploadMethod === 'file' && (
+            <FileUpload
+              onFileSelect={handleFileSelect}
+              preview={photoPreview}
+              onClearPreview={handleClearPhoto}
             />
+          )}
+          
+          {photo && photoPreview && (
+            <div className="relative">
+              <ImagePreview
+                src={photoPreview}
+                alt="プレビュー"
+                className="w-full h-64 object-cover rounded-md"
+              />
+              <Button
+                type="button"
+                onClick={handleClearPhoto}
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </Button>
+            </div>
           )}
         </div>
 
@@ -126,39 +178,32 @@ export default function CreatePage() {
           />
         </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">位置情報</span>
-            <button
-              type="button"
-              onClick={handleLocationCapture}
-              className="text-sm text-green-500 hover:text-green-600 flex items-center"
-            >
-              <MapPinIcon className="h-4 w-4 mr-1" />
-            現在地を取得
-            </button>
-          </div>
-          {location && (
-            <p className="text-sm text-gray-500">
-              緯度: {location.lat.toFixed(6)}, 経度: {location.lng.toFixed(6)}
-            </p>
-          )}
-        </div>
+        <LocationCapture
+          onLocationCapture={handleLocationCapture}
+          onLocationClear={handleLocationClear}
+          currentLocation={location}
+          disabled={loading}
+        />
 
         {error && (
-          <div className="text-red-600 text-sm">
-            エラー: {error.message}
-          </div>
+          <ErrorMessage message={`保存に失敗しました: ${error.message}`} />
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={loading || !photo}
-          className="w-full btn-primary disabled:bg-gray-300 disabled:text-gray-500"
+          className="w-full"
         >
           {loading ? '保存中...' : '記録を保存'}
-        </button>
+        </Button>
       </form>
+      
+      {showCamera && (
+        <CameraComponent
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
     </div>
   )
 }

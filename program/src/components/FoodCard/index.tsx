@@ -4,7 +4,7 @@ import { formatDate } from '../../db/helpers'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline'
 import { useFoodRecordActions } from '../../db/hooks'
-import { Card } from '../Common'
+import { Card, ImagePreview, Button } from '../Common'
 
 interface FoodCardProps {
   record: FoodRecord
@@ -28,13 +28,15 @@ export default function FoodCard({ record, onToggleFavorite }: FoodCardProps) {
     <Card className="overflow-hidden hover:shadow-xl transition-shadow">
       <Link to={`/detail/${record.id}`} className="block">
         <div className="relative">
-          <img
+          <ImagePreview
             src={URL.createObjectURL(record.photo)}
             alt="食事の写真"
             className="w-full h-48 object-cover"
           />
-          <button
+          <Button
             onClick={handleToggleFavorite}
+            variant="ghost"
+            size="sm"
             className="absolute top-2 right-2 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-colors"
             aria-label={record.favorite ? 'お気に入りを解除' : 'お気に入りに追加'}
           >
@@ -43,7 +45,7 @@ export default function FoodCard({ record, onToggleFavorite }: FoodCardProps) {
             ) : (
               <StarOutlineIcon className="h-5 w-5 text-gray-400" />
             )}
-          </button>
+          </Button>
         </div>
         
         <div className="p-4">

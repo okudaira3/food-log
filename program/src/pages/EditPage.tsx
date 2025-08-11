@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFoodRecord, useFoodRecordActions } from '../db/hooks'
 import { parseTags } from '../db/helpers'
-import { XMarkIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { LocationData } from '../utils/geolocation'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import { LocationCapture } from '../components/Location'
+import { Button, ImagePreview, ErrorMessage } from '../components/Common'
 
 export default function EditPage() {
   const { id } = useParams<{ id: string }>()
@@ -12,13 +15,16 @@ export default function EditPage() {
   
   const [comment, setComment] = useState('')
   const [tags, setTags] = useState('')
-  const [location, setLocation] = useState<{lat: number, lng: number, accuracy: number} | undefined>(undefined)
+  const [location, setLocation] = useState<LocationData | undefined>(undefined)
 
   useEffect(() => {
     if (record) {
       setComment(record.comment)
       setTags(record.tags.join(', '))
-      setLocation(record.location || undefined)
+      setLocation(record.location ? {
+        ...record.location,
+        timestamp: Date.now()
+      } : undefined)
     }
   }, [record])
 
@@ -33,21 +39,12 @@ export default function EditPage() {
     )
   }
 
-  const handleLocationCapture = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          })
-        },
-        (error) => {
-          console.error('位置情報の取得に失敗しました:', error)
-        }
-      )
-    }
+  const handleLocationCapture = (locationData: LocationData) => {
+    setLocation(locationData)
+  }
+
+  const handleLocationClear = () => {
+    setLocation(undefined)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -69,16 +66,17 @@ export default function EditPage() {
     <div className="max-w-md mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">記録を編集</h1>
-        <button
+        <Button
           onClick={() => navigate(`/detail/${record.id}`)}
-          className="text-gray-500 hover:text-gray-700 flex items-center"
+          variant="ghost"
+          size="sm"
         >
           <XMarkIcon className="h-5 w-5" />
-        </button>
+        </Button>
       </div>
 
       <div className="card">
-        <img
+        <ImagePreview
           src={URL.createObjectURL(record.photo)}
           alt="食事の写真"
           className="w-full h-64 object-cover"
@@ -113,37 +111,25 @@ export default function EditPage() {
         </div>
 
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">位置情報</span>
-            <button
-              type="button"
-              onClick={handleLocationCapture}
-              className="text-sm text-green-500 hover:text-green-600 flex items-center"
-            >
-              <MapPinIcon className="h-4 w-4 mr-1" />
-              現在地を取得
-            </button>
-          </div>
-          {location && (
-            <p className="text-sm text-gray-500">
-              緯度: {location.lat.toFixed(6)}, 経度: {location.lng.toFixed(6)}
-            </p>
-          )}
+          <LocationCapture
+            onLocationCapture={handleLocationCapture}
+            onLocationClear={handleLocationClear}
+            currentLocation={location}
+            disabled={loading}
+          />
         </div>
 
         {error && (
-          <div className="text-red-600 text-sm">
-            エラー: {error.message}
-          </div>
+          <ErrorMessage message={`更新に失敗しました: ${error.message}`} />
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="w-full btn-primary disabled:bg-gray-300 disabled:text-gray-500"
+          className="w-full"
         >
           {loading ? '更新中...' : '更新を保存'}
-        </button>
+        </Button>
       </form>
     </div>
   )
