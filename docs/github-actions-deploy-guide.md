@@ -11,7 +11,7 @@
 プロジェクトのルートディレクトリに以下のフォルダを作成します：
 
 ```
-C:\_okudaira\dev\food-log\
+food-log/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml
