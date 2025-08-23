@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import Layout from '../components/Layout'
 import HomePage from '../pages/HomePage'
+import SimpleHomePage from '../pages/SimpleHomePage'
 import CreatePage from '../pages/CreatePage'
 import DetailPage from '../pages/DetailPage'
 import EditPage from '../pages/EditPage'
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <HomePage />
+      },
+      {
+        path: 'simple',
+        element: <SimpleHomePage />
       },
       {
         path: 'create',

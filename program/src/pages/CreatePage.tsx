@@ -5,7 +5,8 @@ import { parseTags } from '../db/helpers'
 import { compressImage } from '../utils/imageProcessing'
 import { LocationData } from '../utils/geolocation'
 import { XMarkIcon, CameraIcon } from '@heroicons/react/24/outline'
-import CameraComponent, { FileUpload } from '../components/Camera'
+import CameraComponent from '../components/Camera'
+import { FileUpload } from '../components/Camera'
 import { LocationCapture } from '../components/Location'
 import { Button, ImagePreview, ErrorMessage } from '../components/Common'
 
@@ -126,7 +127,7 @@ export default function CreatePage() {
           {uploadMethod === 'file' && (
             <FileUpload
               onFileSelect={handleFileSelect}
-              onCompressedBlobReady={(blob, _originalFile) => {
+              onCompressedBlobReady={(blob: Blob, _originalFile: File) => {
                 setPhoto(blob)
                 setPhotoPreview(URL.createObjectURL(blob))
                 setUploadMethod(null)

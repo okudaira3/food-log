@@ -1,25 +1,53 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Button } from '../Common'
+import { useImageCompression } from '../../hooks/useImageCompression'
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void
+  onCompressedBlobReady?: (blob: Blob, originalFile: File) => void
   accept?: string
   maxSize?: number // MB
   preview?: string | null
   onClearPreview?: () => void
+  enableCompression?: boolean
+  compressionOptions?: {
+    maxWidth?: number
+    maxHeight?: number
+    quality?: number
+    format?: 'jpeg' | 'png' | 'webp'
+  }
 }
 
 export default function FileUpload({ 
-  onFileSelect, 
+  onFileSelect,
+  onCompressedBlobReady,
   accept = "image/*", 
   maxSize = 10,
   preview,
-  onClearPreview
+  onClearPreview,
+  enableCompression = true,
+  compressionOptions = {}
 }: FileUploadProps) {
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const { 
+    compressImage, 
+    loading: compressing, 
+    progress: compressionProgress, 
+    error: compressionError,
+    resetState: resetCompressionState,
+    cleanup: cleanupCompression
+  } = useImageCompression()
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      cleanupCompression()
+    }
+  }, [cleanupCompression])
 
   const validateFile = (file: File): boolean => {
     setError(null)
@@ -39,8 +67,29 @@ export default function FileUpload({
     return true
   }
 
-  const handleFileSelect = (file: File) => {
-    if (validateFile(file)) {
+  const handleFileSelect = async (file: File) => {
+    if (!validateFile(file)) return
+    
+    resetCompressionState()
+    
+    try {
+      if (enableCompression) {
+        // 圧縮処理を実行
+        const result = await compressImage(file, compressionOptions)
+        
+        // 圧縮結果をコールバックで通知
+        onCompressedBlobReady?.(result.blob, file)
+        
+        console.log(`Image compressed: ${result.originalSize} -> ${result.compressedSize} bytes (${Math.round(result.compressionRatio * 100)}% reduction)`)
+      } else {
+        // 圧縮無しでそのまま通知
+        onFileSelect(file)
+      }
+    } catch (error) {
+      console.error('Image compression failed:', error)
+      setError(error instanceof Error ? error.message : '画像の処理に失敗しました')
+      
+      // 圧縮に失敗した場合、元ファイルを使用
       onFileSelect(file)
     }
   }
@@ -134,9 +183,24 @@ export default function FileUpload({
         className="hidden"
       />
       
-      {error && (
+      {/* 圧縮進捗表示 */}
+      {compressing && (
+        <div className="space-y-2">
+          <div className="text-sm text-gray-600">画像を圧縮中...</div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${compressionProgress}%` }}
+            ></div>
+          </div>
+          <div className="text-xs text-gray-500">{compressionProgress}%</div>
+        </div>
+      )}
+      
+      {/* エラー表示 */}
+      {(error || compressionError) && (
         <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
-          {error}
+          {error || compressionError}
         </div>
       )}
     </div>

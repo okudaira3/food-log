@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { MapPinIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { useState } from 'react'
+import { MapPinIcon, ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import { getCurrentLocation, GeolocationError, LocationData, formatAccuracy } from '../../utils/geolocation'
 import { Button } from '../Common'
+import { usePermission } from '../../hooks/usePermissions'
 
 interface LocationCaptureProps {
   onLocationCapture: (location: LocationData) => void
@@ -18,43 +19,72 @@ export default function LocationCapture({
 }: LocationCaptureProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<GeolocationError | null>(null)
-  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt'>('prompt')
-
-  useEffect(() => {
-    checkPermission()
-  }, [])
-
-  const checkPermission = async () => {
-    if (!navigator.permissions) return
-    
-    try {
-      const result = await navigator.permissions.query({ name: 'geolocation' })
-      setPermissionStatus(result.state)
-      
-      result.addEventListener('change', () => {
-        setPermissionStatus(result.state)
-      })
-    } catch (err) {
-      console.error('権限チェックエラー:', err)
-    }
-  }
+  
+  // 新しい権限管理フックを使用
+  const {
+    status: permissionStatus,
+    error: permissionError,
+    isSupported,
+    requestPermission,
+    checkPermission
+  } = usePermission('geolocation')
 
   const handleLocationCapture = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const location = await getCurrentLocation({
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
-      })
+      // 常に権限要求を試行し、成功した場合に位置情報を取得
+      let status = permissionStatus
       
-      onLocationCapture(location)
+      // 権限が不明または prompt の場合は権限要求
+      if (status === 'unknown' || status === 'prompt' || status === 'checking') {
+        status = await requestPermission()
+      }
+      
+      // 権限が拒否されている場合はエラーを表示
+      if (status === 'denied') {
+        throw new Error('位置情報のアクセスが拒否されています。ブラウザの設定で許可してください。')
+      }
+
+      // 権限が許可された場合、位置情報を取得
+      if (status === 'granted') {
+        const location = await getCurrentLocation({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 300000 // 5分間のキャッシュを許可
+        })
+        onLocationCapture(location)
+      } else {
+        throw new Error('位置情報の取得権限が必要です')
+      }
     } catch (err) {
+      console.error('位置情報取得エラー:', err)
       setError(err as GeolocationError)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handlePermissionRequest = async () => {
+    try {
+      const status = await requestPermission()
+      if (status === 'granted') {
+        setError(null) // エラーをクリア
+      }
+    } catch (err) {
+      console.error('Permission request failed:', err)
+    }
+  }
+
+  const handlePermissionRecheck = async () => {
+    try {
+      const status = await checkPermission()
+      if (status === 'granted') {
+        setError(null) // 権限が許可されていればエラーをクリア
+      }
+    } catch (err) {
+      console.error('Permission check failed:', err)
     }
   }
 
@@ -141,28 +171,94 @@ export default function LocationCapture({
         </div>
       </div>
       
-      {permissionStatus === 'denied' && (
+      {/* サポートされていない場合 */}
+      {!isSupported && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
           <div className="flex items-center space-x-2">
             <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
             <div>
-              <p className="text-sm text-red-800 font-medium">位置情報のアクセスが拒否されています</p>
+              <p className="text-sm text-red-800 font-medium">位置情報がサポートされていません</p>
               <p className="text-xs text-red-600 mt-1">
-                ブラウザの設定で位置情報の使用を許可してください。
+                お使いのブラウザまたはデバイスでは位置情報機能が利用できません。
               </p>
             </div>
           </div>
         </div>
       )}
+
+      {/* 権限が拒否された場合 */}
+      {isSupported && permissionStatus === 'denied' && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-red-800 font-medium">位置情報のアクセスが拒否されています</p>
+              <div className="text-xs text-red-600 mt-1 space-y-1">
+                <p>位置情報を使用するには、以下の手順で許可してください：</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li>アドレスバーの左にある錠前アイコンをクリック</li>
+                  <li>「位置情報」を「許可」に変更</li>
+                  <li>ページを再読み込み</li>
+                </ul>
+              </div>
+              <div className="mt-2">
+                <Button 
+                  onClick={handlePermissionRecheck} 
+                  size="sm" 
+                  variant="outline"
+                  className="text-xs"
+                >
+                  権限状態を再確認
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      {permissionStatus === 'prompt' && (
+      {/* 権限要求が可能な場合 */}
+      {isSupported && permissionStatus === 'prompt' && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-center space-x-2">
-            <MapPinIcon className="h-5 w-5 text-blue-500" />
-            <div>
-              <p className="text-sm text-blue-800">
-                位置情報を取得すると、後で地図で確認できます。
+          <div className="flex items-start space-x-2">
+            <InformationCircleIcon className="h-5 w-5 text-blue-500 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-blue-800 font-medium">位置情報の使用について</p>
+              <p className="text-xs text-blue-600 mt-1">
+                位置情報を取得すると、後で地図で記録を確認できて便利です。
+                ブラウザが許可を求めた際は「許可」を選択してください。
               </p>
+              <div className="mt-2">
+                <Button 
+                  onClick={handlePermissionRequest} 
+                  size="sm"
+                  className="text-xs"
+                >
+                  位置情報の許可を要求
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 権限確認中 */}
+      {permissionStatus === 'checking' && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+            <p className="text-sm text-gray-700">権限状態を確認中...</p>
+          </div>
+        </div>
+      )}
+
+      {/* 権限エラー */}
+      {permissionError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <div className="flex items-center space-x-2">
+            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+            <div>
+              <p className="text-sm text-yellow-800">権限確認に問題が発生しました</p>
+              <p className="text-xs text-yellow-600 mt-1">{permissionError}</p>
             </div>
           </div>
         </div>

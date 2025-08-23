@@ -32,29 +32,52 @@ export const foodRecordService = {
   },
 
   async search(filters: SearchFilters): Promise<FoodRecord[]> {
-    let collection = db.foodRecords.toCollection()
+    // インデックスを活用した効率的なクエリ実装
+    let query = db.foodRecords.orderBy('timestamp').reverse()
 
-    if (filters.dateFrom || filters.dateTo) {
-      collection = collection.filter((record) => {
-        const timestamp = record.timestamp.getTime()
-        const fromTime = filters.dateFrom ? filters.dateFrom.getTime() : 0
-        const toTime = filters.dateTo ? filters.dateTo.getTime() : Date.now()
-        return timestamp >= fromTime && timestamp <= toTime
-      })
+    // 日付範囲フィルター（インデックス活用）
+    if (filters.dateFrom && filters.dateTo) {
+      query = db.foodRecords
+        .where('timestamp')
+        .between(filters.dateFrom, filters.dateTo, true, true)
+        .reverse()
+    } else if (filters.dateFrom) {
+      query = db.foodRecords
+        .where('timestamp')
+        .aboveOrEqual(filters.dateFrom)
+        .reverse()
+    } else if (filters.dateTo) {
+      query = db.foodRecords
+        .where('timestamp')
+        .belowOrEqual(filters.dateTo)
+        .reverse()
     }
 
+    // お気に入りフィルター
     if (filters.favoritesOnly) {
-      collection = collection.filter((record) => record.favorite === true)
+      // 複合インデックス [favorite+timestamp] を活用
+      query = db.foodRecords
+        .where('[favorite+timestamp]')
+        .between([true, new Date(0)], [true, new Date()])
+        .reverse()
     }
 
-    let results = await collection.toArray()
-
+    // タグフィルター（マルチエントリインデックス活用）
     if (filters.tags && filters.tags.length > 0) {
-      results = results.filter((record) =>
-        filters.tags!.some((tag) => record.tags.includes(tag))
-      )
+      // 最初のタグでインデックス検索、その後フィルタリング
+      const firstTag = filters.tags[0]
+      query = db.foodRecords
+        .where('tags')
+        .equals(firstTag)
+        .and((record) => {
+          // 残りのタグもすべて含んでいることを確認
+          return filters.tags!.every(tag => record.tags.includes(tag))
+        })
     }
 
+    let results = await query.toArray()
+
+    // フルテキスト検索（最後に実行）
     if (filters.searchText) {
       const searchLower = filters.searchText.toLowerCase()
       results = results.filter((record) =>
@@ -62,7 +85,7 @@ export const foodRecordService = {
       )
     }
 
-    return results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    return results
   },
 
   async toggleFavorite(id: number): Promise<void> {

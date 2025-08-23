@@ -1,15 +1,5 @@
-import Dexie, { Table } from 'dexie'
-import { FoodRecord } from '../types'
-
-export class FoodLogDatabase extends Dexie {
-  foodRecords!: Table<FoodRecord>
-
-  constructor() {
-    super('FoodLogDatabase')
-    this.version(1).stores({
-      foodRecords: '++id, timestamp, *tags, favorite'
-    })
-  }
-}
-
-export const db = new FoodLogDatabase()
+// データベース関連のエクスポート
+export { FoodLogDatabase, db } from './database'
+export * from './services'
+export * from './hooks'
+export * from './helpers'

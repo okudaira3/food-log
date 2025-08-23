@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react'
-import { CameraIcon, XMarkIcon, CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { CameraIcon, XMarkIcon, CheckIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../Common'
+import { usePermission } from '../../hooks/usePermissions'
 
 interface CameraComponentProps {
   onCapture: (blob: Blob) => void
@@ -17,9 +18,45 @@ export default function CameraComponent({ onCapture, onClose }: CameraComponentP
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  // カメラ権限管理
+  const {
+    status: permissionStatus,
+    error: permissionError,
+    isSupported,
+    requestPermission
+  } = usePermission('camera')
+
+  // 権限状態が変更された時の処理
+  useEffect(() => {
+    if (permissionStatus === 'denied' && isCapturing) {
+      setError('カメラの使用が拒否されています')
+      setIsCapturing(false)
+    }
+  }, [permissionStatus, isCapturing])
+
   const startCamera = useCallback(async () => {
     try {
       setError(null)
+      
+      // 権限の確認と要求
+      if (permissionStatus === 'prompt' || permissionStatus === 'unknown') {
+        const status = await requestPermission()
+        if (status !== 'granted') {
+          setError('カメラの使用が拒否されました')
+          return
+        }
+      }
+      
+      if (permissionStatus === 'denied') {
+        setError('カメラの使用が拒否されています。ブラウザの設定で許可してください。')
+        return
+      }
+
+      if (!isSupported) {
+        setError('このブラウザまたはデバイスではカメラが利用できません')
+        return
+      }
+
       const constraints = {
         video: {
           facingMode: facingMode,
@@ -36,9 +73,23 @@ export default function CameraComponent({ onCapture, onClose }: CameraComponentP
       }
     } catch (err) {
       console.error('カメラアクセスエラー:', err)
-      setError('カメラにアクセスできません。カメラの許可を確認してください。')
+      
+      let errorMessage = 'カメラにアクセスできません'
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'カメラの使用が拒否されました。ブラウザの設定で許可してください。'
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されていることを確認してください。'
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'カメラが他のアプリケーションで使用中です。'
+        } else {
+          errorMessage = `カメラエラー: ${err.message}`
+        }
+      }
+      
+      setError(errorMessage)
     }
-  }, [facingMode])
+  }, [facingMode, permissionStatus, requestPermission, isSupported])
 
   const stopCamera = useCallback(() => {
     if (stream) {
