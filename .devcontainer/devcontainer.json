@@ -1,0 +1,63 @@
+{
+  "name": "Food Log App",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense",
+        "ms-vscode.vscode-json",
+        "ms-vscode.vscode-js-debug"
+      ],
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "auto",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "tailwindCSS.includeLanguages": {
+          "typescript": "javascript",
+          "typescriptreact": "javascript"
+        },
+        "editor.quickSuggestions": {
+          "strings": true
+        },
+        "css.validate": false
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 3001, 3002],
+  "portsAttributes": {
+    "3000": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "openPreview"
+    },
+    "3002": {
+      "label": "Vite Dev Server Alt",
+      "onAutoForward": "openPreview"
+    }
+  },
+
+  "mounts": [
+    "source=food-log-node_modules,target=/workspaces/food-log/program/node_modules,type=volume"
+  ],
+
+  "postCreateCommand": "cd program && npm install",
+
+  "remoteUser": "node",
+
+  "containerEnv": {
+    "NODE_ENV": "development"
+  },
+
+  "shutdownAction": "stopContainer"
+}
