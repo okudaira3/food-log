@@ -24,9 +24,9 @@ export default function Button({
   const baseClasses = 'font-bold rounded transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
   
   const variantClasses = {
-    primary: 'btn-primary focus:ring-green-500',
-    secondary: 'btn-secondary focus:ring-red-500',
-    outline: 'border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white focus:ring-green-500',
+    primary: 'btn-primary focus:ring-primary',
+    secondary: 'btn-secondary focus:ring-accent',
+    outline: 'border-2 border-accent text-accent hover:bg-accent hover:text-white focus:ring-accent',
     ghost: 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:ring-gray-500'
   }
   

@@ -16,7 +16,7 @@ export default function DetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">記録が見つかりません</p>
-        <Link to="/" className="text-blue-500 hover:text-blue-600 underline">
+        <Link to="/" className="text-accent hover:text-accent/80 underline">
           ホームに戻る
         </Link>
       </div>
@@ -104,7 +104,7 @@ export default function DetailPage() {
             disabled={loading}
             variant="outline"
             size="sm"
-            className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
+            className="text-primary border-primary hover:bg-primary hover:text-white"
           >
             <TrashIcon className="h-4 w-4 mr-1" />
             削除
@@ -141,7 +141,7 @@ export default function DetailPage() {
                 {record.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md"
+                    className="px-2 py-1 bg-accent/10 text-accent text-sm rounded-md"
                   >
                     #{tag}
                   </span>

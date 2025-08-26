@@ -60,20 +60,20 @@ export default function FoodCard({ record, onToggleFavorite }: FoodCardProps) {
               {record.tags.slice(0, 3).map((tag, index) => (
                 <span
                   key={index}
-                  className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+                  className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full"
                 >
                   #{tag}
                 </span>
               ))}
               {record.tags.length > 3 && (
-                <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">
+                <span className="px-2 py-1 bg-textColor/10 text-textColor/60 text-xs rounded-full">
                   +{record.tags.length - 3}
                 </span>
               )}
             </div>
           )}
           
-          <div className="flex justify-between items-center text-xs text-gray-400">
+          <div className="flex justify-between items-center text-xs text-textColor/60">
             <span>{formatDate(record.timestamp)}</span>
             {record.location && (
               <span>📍 位置情報あり</span>

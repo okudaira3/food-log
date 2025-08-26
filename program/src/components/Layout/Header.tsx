@@ -5,10 +5,10 @@ export default function Header() {
   const location = useLocation()
   
   return (
-    <header className="bg-blue-900 shadow-sm">
+    <header className="bg-primary shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <nav className="flex justify-between items-center">
-          <Link to="/" className="text-xl font-bold text-white">
+          <Link to="/" className="text-xl font-bold text-textColor">
             🍽️ フードログ
           </Link>
           
@@ -17,8 +17,8 @@ export default function Header() {
               to="/"
               className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 location.pathname === '/' 
-                  ? 'bg-green-500 text-white' 
-                  : 'text-white hover:text-green-400'
+                  ? 'bg-accent text-white' 
+                  : 'text-textColor hover:text-accent'
               }`}
             >
               <HomeIcon className="h-5 w-5 mr-2" />
@@ -28,8 +28,8 @@ export default function Header() {
               to="/create"
               className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 location.pathname === '/create' 
-                  ? 'bg-green-500 text-white' 
-                  : 'text-white hover:text-green-400'
+                  ? 'bg-accent text-white' 
+                  : 'text-textColor hover:text-accent'
               }`}
             >
               <PlusIcon className="h-5 w-5 mr-2" />
